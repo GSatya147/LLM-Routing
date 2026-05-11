@@ -1,2 +1,4 @@
 litellm==1.83.14
 python-dotenv==1.2.2
+ruff==0.15.2
+black==24.10.0
