@@ -8,7 +8,7 @@ from litellm import completion
 
 load_dotenv()
 
-ROLE_CONFIG = {
+ROLE_CONFIG: dict = {
     "fast": {
         "model_name": os.getenv("MODEL_FAST", "gemini/gemini-3.0-flash-preview"),
         "api_key": os.getenv("GEMINI_API_KEY"),
@@ -47,3 +47,31 @@ ROLE_CONFIG = {
         "fallback_api_key": None
     }
 }
+
+def _log(status: str, user_prompt: str, input_tokens: int, model_response: str, output_tokens: int, role: str, model_name: str, latency_time: float, fallback_model_name=None) -> None:
+    
+    timestamp = datetime.now()
+
+    log_entry: dict = {
+        "status": status,
+        "input": user_prompt,
+        "input_tokens_count": input_tokens,
+        "output": model_response,
+        "output_tokens_count": output_tokens,
+        "role": role, 
+        "model_name": model_name,
+        "fallback_model": fallback_model_name,
+        "timestamp": timestamp.time().strftime("%H:%M:%S"),
+        "date": timestamp.date().strftime("%D"),
+        "latency": latency_time
+    }
+
+    json_string: str = json.dumps(log_entry)
+
+    os.makedirs("logs", exist_ok=True)
+
+    with open("logs/logs.jsonl", "a") as af:
+        af.write(json_string)
+        af.write("\n")
+
+_log("SUCCESS", "hello", 1, "hi, how can I help you?", 7,"fast", "Gemini", 10)
