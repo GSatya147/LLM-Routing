@@ -15,7 +15,7 @@ ROLE_CONFIG: dict = {
         "api_base": None,
         "fallback_model_name": os.getenv("MODEL_STABLE", "openai/gpt-4o-mini"),
         "fallback_api_key": os.getenv("GITHUB_PAT_TOKEN"),
-        "fallback_api_base": "https://models.inference.ai.azure.com"
+        "fallback_api_base": "https://models.inference.ai.azure.com",
     },
     "smart": {
         "model_name": os.getenv("MODEL_SMART", "gemini/gemini-2.5-flash"),
@@ -23,15 +23,17 @@ ROLE_CONFIG: dict = {
         "api_base": None,
         "fallback_model_name": os.getenv("MODEL_STABLE", "openai/gpt-4o-mini"),
         "fallback_api_key": os.getenv("GITHUB_PAT_TOKEN"),
-        "fallback_api_base": "https://models.inference.ai.azure.com"
+        "fallback_api_base": "https://models.inference.ai.azure.com",
     },
     "stable": {
         "model_name": os.getenv("MODEL_STABLE", "openai/gpt-4o-mini"),
         "api_key": os.getenv("GITHUB_PAT_TOKEN"),
         "api_base": "https://models.inference.ai.azure.com",
-        "fallback_model_name": os.getenv("MODEL_GENEROUS", "groq/llama-3.3-70b-versatile"),
+        "fallback_model_name": os.getenv(
+            "MODEL_GENEROUS", "groq/llama-3.3-70b-versatile"
+        ),
         "fallback_api_key": os.getenv("GROQ_API_KEY"),
-        "fallback_api_base": None
+        "fallback_api_base": None,
     },
     "generous": {
         "model_name": os.getenv("MODEL_GENEROUS", "groq/llama-3.3-70b-versatile"),
@@ -39,7 +41,7 @@ ROLE_CONFIG: dict = {
         "api_base": None,
         "fallback_model_name": os.getenv("MODEL_LOCAL", "groq/llama-3.1-8b-instant"),
         "fallback_api_key": os.getenv("GROQ_API_KEY"),
-        "fallback_api_base": None
+        "fallback_api_base": None,
     },
     "local": {
         "model_name": os.getenv("MODEL_LOCAL", "groq/llama-3.1-8b-instant"),
@@ -47,17 +49,29 @@ ROLE_CONFIG: dict = {
         "api_base": None,
         "fallback_model_name": None,
         "fallback_api_key": None,
-        "fallback_api_base": None
-    }
+        "fallback_api_base": None,
+    },
 }
 
-def _log(status: str, user_prompt: str, input_tokens: int, model_response: str, output_tokens: int, role: str, model_name: str, latency_time: float, fallback_model_name=None, error=None) -> None:
-    
+
+def _log(
+    status: str,
+    user_prompt: str,
+    input_tokens: int,
+    model_response: str,
+    output_tokens: int,
+    role: str,
+    model_name: str,
+    latency_time: float,
+    fallback_model_name=None,
+    error=None,
+) -> None:
+
     timestamp = datetime.now()
 
     log_entry: dict = {
         "role": role,
-        "status": status, 
+        "status": status,
         "input": user_prompt,
         "input_tokens_count": input_tokens,
         "output": model_response,
@@ -67,7 +81,7 @@ def _log(status: str, user_prompt: str, input_tokens: int, model_response: str, 
         "timestamp": timestamp.time().strftime("%H:%M:%S"),
         "date": timestamp.date().strftime("%D"),
         "latency": latency_time,
-        "error": error
+        "error": error,
     }
 
     json_string: str = json.dumps(log_entry)
@@ -78,14 +92,15 @@ def _log(status: str, user_prompt: str, input_tokens: int, model_response: str, 
         af.write(json_string)
         af.write("\n")
 
+
 def chat(messages: list[dict], role: str):
     if ROLE_CONFIG.get(role) is not None:
         config = ROLE_CONFIG.get(role)
-    else: 
+    else:
         raise ValueError("Please enter a valid role: fast/smart/stable/generous/local")
 
     call_kwargs = {
-        "model": config["model_name"], 
+        "model": config["model_name"],
         "messages": messages,
         "api_key": config["api_key"],
     }
@@ -98,13 +113,34 @@ def chat(messages: list[dict], role: str):
     try:
         response = litellm.completion(**call_kwargs)
         t1 = time.time()
-        latency = round(t1-t0, 3)
-        _log("Success", messages[-1].get("content"), response.usage.prompt_tokens, response.choices[0].message.content, response.usage.completion_tokens, role, call_kwargs.get("model"), latency, None)
+        latency = round(t1 - t0, 3)
+        _log(
+            "Success",
+            messages[-1].get("content"),
+            response.usage.prompt_tokens,
+            response.choices[0].message.content,
+            response.usage.completion_tokens,
+            role,
+            call_kwargs.get("model"),
+            latency,
+            None,
+        )
 
     except Exception as e:
         if config["fallback_model_name"] is None:
-            latency = round(time.time()-t0, 3)
-            _log("No fallback available", messages[-1].get("content"), response.usage.prompt_tokens, None, None, role, call_kwargs.get("model"), latency, None, str(e))
+            latency = round(time.time() - t0, 3)
+            _log(
+                "No fallback available",
+                messages[-1].get("content"),
+                response.usage.prompt_tokens,
+                None,
+                None,
+                role,
+                call_kwargs.get("model"),
+                latency,
+                None,
+                str(e),
+            )
             raise
 
         call_kwargs["model"] = config.get("fallback_model_name")
@@ -116,7 +152,17 @@ def chat(messages: list[dict], role: str):
         response = litellm.completion(**call_kwargs)
         t2 = time.time()
 
-        latency = round(t2-t0, 3)
-        _log("fallback", messages[-1].get("content"), response.usage.prompt_tokens, response.choices[0].message.content, response.usage.completion_tokens, role, call_kwargs.get("model"), latency, None)
-            
+        latency = round(t2 - t0, 3)
+        _log(
+            "fallback",
+            messages[-1].get("content"),
+            response.usage.prompt_tokens,
+            response.choices[0].message.content,
+            response.usage.completion_tokens,
+            role,
+            call_kwargs.get("model"),
+            latency,
+            None,
+        )
+
     return response.choices[0].message.content
