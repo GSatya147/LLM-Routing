@@ -4,7 +4,7 @@ import json
 import time
 
 from dotenv import load_dotenv
-from litellm import completion
+import litellm
 
 load_dotenv()
 
@@ -74,4 +74,47 @@ def _log(status: str, user_prompt: str, input_tokens: int, model_response: str, 
         af.write(json_string)
         af.write("\n")
 
-_log("SUCCESS", "hello", 1, "hi, how can I help you?", 7,"fast", "Gemini", 10)
+def chat(messages: list[dict], role: str):
+    config = ROLE_CONFIG.get(role)
+    call_kwargs = {
+        "model": config["model_name"], 
+        "messages": messages,
+        "api_key": config["api_key"],
+    }
+
+    if config["api_base"] is not None:
+        call_kwargs["api_base"] = config["api_base"]
+    
+    print(call_kwargs)
+
+    t0 = time.time()
+
+    try:
+        # response = litellm.completion(**call_kwargs)
+        t1 = time.time()
+        latency = round(t1-t0, 3)
+        print(latency)
+
+    except:
+        if config["fallback_model_name"] is None:
+            latency = round(t1-t0, 3)
+            print(latency)
+            # _log()
+            raise
+
+        call_kwargs["model"] = config.get("fallback_model_name")
+        call_kwargs["api_key"] = config.get("fallback_api_key")
+
+        if config["fallback_api_base"] is not None:
+            call_kwargs["api_base"] = config.get("fallback_api_base")
+
+        # response = litellm.completion(**call_kwargs)
+        t2 = time.time()
+
+        latency = round(t2-t0, 3)
+        # _log()
+        print(latency)
+
+    # print(response.choices[0].messages.content)
+
+chat([{"hi": "hello"}], "fast")
